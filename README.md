@@ -3,6 +3,7 @@
 AI was used for parts of this code.
 
 Source: https://astrogeology.usgs.gov/search/map/mars_mgs_mola_mex_hrsc_blended_dem_global_200m
+
 How to use:
 python pathfind.py --start lon1 lat1 --end lon2 lat2
 Saves all points in .json format
