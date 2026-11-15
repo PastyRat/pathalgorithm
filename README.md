@@ -1,5 +1,7 @@
 # pathalgorithm
 
+AI was used for parts of this code.
+
 How to use:
 python pathfind.py --start lon1 lat1 --end lon2 lat2
 Saves all points in .json format
