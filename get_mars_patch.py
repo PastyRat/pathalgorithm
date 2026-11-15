@@ -13,7 +13,7 @@ URL = (
 def get_patch(lon, lat, size_km=10.0, url=URL):
     """Return (elev_m, slope_deg, info) for a size_km x size_km square
     centred on lon/lat (degrees, planetocentric, east positive)."""
-    if abs(lat) > 85:
+    if abs(lat) > 85: #over 85 degrees there will be increased errors.
         raise ValueError("Too close to a pole: cylindrical projection is badly distorted.")
     lon = ((lon + 180) % 360) - 180          # force -180..180
     half = size_km * 1000.0 / 2.0
@@ -22,7 +22,7 @@ def get_patch(lon, lat, size_km=10.0, url=URL):
     with rasterio.Env(
         GDAL_DISABLE_READDIR_ON_OPEN="EMPTY_DIR",
         CPL_VSIL_CURL_ALLOWED_EXTENSIONS=".tif",
-        GDAL_HTTP_UNSAFESSL="YES",
+        GDAL_HTTP_UNSAFESSL="YES", #It won't work without this for some reason idk?
     ):
         with rasterio.open(url) as src:
             # The file's coordinates are in degrees
@@ -51,7 +51,6 @@ def get_patch(lon, lat, size_km=10.0, url=URL):
             ys = t.f + (np.arange(elev.shape[0]) + 0.5) * t.e
             xres, yres = abs(t.a), abs(t.e)
 
-            print("Degrees")
             row_lat = ys
             dy = np.radians(yres) * R
             dx = np.radians(xres) * R * np.cos(np.radians(row_lat))

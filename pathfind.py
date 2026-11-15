@@ -18,9 +18,7 @@ from scipy.ndimage import distance_transform_edt
 
 from get_mars_patch import get_patch, R
 
-
-# ---------------------------------------------------------------- geometry
-def haversine_km(lon1, lat1, lon2, lat2):
+def haversine_km(lon1, lat1, lon2, lat2): #finds distance between two points on a sphere (Mars) in km
     p1, p2 = math.radians(lat1), math.radians(lat2)
     dphi, dl = p2 - p1, math.radians(lon2 - lon1)
     a = math.sin(dphi / 2) ** 2 + math.cos(p1) * math.cos(p2) * math.sin(dl / 2) ** 2
@@ -39,18 +37,10 @@ def rc_to_lonlat(r, c, info):
     x, y = t.c + (c + 0.5) * t.a, t.f + (r + 0.5) * t.e
     return x, y
 
-
-# ---------------------------------------------------------------- cost grid
 def build_cost(elev, slope_deg, dx_m, dy_m, max_slope=20.0, slope_weight=4.0,
-               rough_weight=0.0, clearance_m=0.0):
-    """Return a multiplier grid: 1.0 = flat easy ground, >1 = harder, inf = blocked."""
+               clearance_m=0.0):
+    #Return a multiplier grid: 1.0 = flat easy ground, >1 = harder, inf = blocked.
     cost = 1.0 + slope_weight * (slope_deg / max_slope) ** 2
-
-    if rough_weight > 0:  # local relief in a 3x3 window, in metres
-        from scipy.ndimage import maximum_filter, minimum_filter
-        relief = maximum_filter(elev, 3) - minimum_filter(elev, 3)
-        cost = cost + rough_weight * relief / 100.0
-
     blocked = (slope_deg > max_slope) | ~np.isfinite(elev) | ~np.isfinite(slope_deg)
     if clearance_m > 0:  # keep away from blocked cells (rover radius / safety margin)
         pix = float(min(dy_m, np.min(dx_m)))
@@ -60,7 +50,6 @@ def build_cost(elev, slope_deg, dx_m, dy_m, max_slope=20.0, slope_weight=4.0,
     return cost
 
 
-# ---------------------------------------------------------------- A*
 def astar(cost, start, goal, dx_m, dy_m):
     """Step length uses real metres (dx_m is per row)."""
     h, w = cost.shape
@@ -105,7 +94,7 @@ def astar(cost, start, goal, dx_m, dy_m):
     return None, math.inf
 
 
-def hillshade(elev, dx_m, dy_m, azimuth=315, altitude=45):
+def hillshade(elev, dx_m, dy_m, azimuth=315, altitude=45): #for visuals with --plot
     dzdy = np.gradient(elev, axis=0) / dy_m
     dzdx = np.gradient(elev, axis=1) / dx_m[:, None]
     slope = np.arctan(np.hypot(dzdx, dzdy))
@@ -133,10 +122,9 @@ def main():
     ap.add_argument("--start", type=float, nargs=2, required=True, metavar=("LON", "LAT"))
     ap.add_argument("--end", type=float, nargs=2, required=True, metavar=("LON", "LAT"))
     ap.add_argument("--margin-km", type=float, default=5.0,) #Margin around straight line to load map
-    ap.add_argument("--max-slope", type=float, default=20.0, help="blocked above this (deg)")
+    ap.add_argument("--max-slope", type=float, default=20.0) # Max slope that the rover/vehicle can climb
     ap.add_argument("--slope-weight", type=float, default=4.0)
-    ap.add_argument("--rough-weight", type=float, default=0.0)
-    ap.add_argument("--clearance-m", type=float, default=0.0,) # How far to keep away from blocks
+    ap.add_argument("--clearance-m", type=float, default=5.0,) # How far to keep away from blocks
     ap.add_argument("--plot", action="store_true")
     ap.add_argument("--out", default="path")
     args = ap.parse_args()
@@ -159,7 +147,7 @@ def main():
             raise SystemExit(f"{name} fell outside the loaded grid; increase --margin-km.")
 
     cost = build_cost(elev, slope, dx_m, dy_m, args.max_slope, args.slope_weight,
-                      args.rough_weight, args.clearance_m)
+                      args.clearance_m)
     print(f"Blocked cells: {np.isinf(cost).mean() * 100:.1f}%")
 
     path, total = astar(cost, start, goal, dx_m, dy_m)
@@ -183,7 +171,7 @@ def main():
         output_file.write("\n")
     print(f"Saved {args.out}_lonlat.json ({len(path)} points)")
 
-    if args.plot:
+    if args.plot: #Create map gui if --plot
         import matplotlib.pyplot as plt
         pr, pc = zip(*path)
         fig, ax = plt.subplots(1, 2, figsize=(13, 6))
